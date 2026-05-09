@@ -1,4 +1,4 @@
-name: Build SMB
+name: Build SuperMarioBros
 
 on:
   push:
@@ -9,24 +9,39 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Configure
+      - name: Install tools (Flex/Bison)
+        run: choco install winflexbison3 -y
+
+      - name: Add Flex/Bison to PATH
+        run: echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
+
+      - name: Install vcpkg dependencies
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+          C:\vcpkg\bootstrap-vcpkg.bat
+          C:\vcpkg\vcpkg install sdl2:x64-windows boost:x64-windows
+
+      - name: Configure CMake
         run: |
           mkdir build
           cd build
-          cmake ..
+          cmake .. ^
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ^
+            -DBISON_EXECUTABLE=C:/ProgramData/chocolatey/bin/bison.exe ^
+            -DFLEX_EXECUTABLE=C:/ProgramData/chocolatey/bin/flex.exe
 
-      - name: Build
+      - name: Build project
         run: |
           cd build
           cmake --build . --config Release
 
-      - name: Upload EXE
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: SuperMarioBros-Windows
